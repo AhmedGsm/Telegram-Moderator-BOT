@@ -7,12 +7,14 @@ from telethon.tl.types import MessageMediaPhoto
 
 
 class TelegramPostManager:
-    def __init__(self, api_id, api_hash, bot_token, source_group, backup_group):
+    def __init__(self, api_id, api_hash, bot_token, source_group, backup_group, admin_id):
         self.client = TelegramClient('bot_session', api_id, api_hash)
         self.bot_token = bot_token
         self.source_group = source_group
         self.backup_group = backup_group
+        self.admin_id = admin_id
         self.pending_albums = {}  # Track album groupings
+        self.user_id = -1000
 
     async def start(self):
         await self.client.start(bot_token=self.bot_token)
@@ -21,20 +23,29 @@ class TelegramPostManager:
         await self.client.run_until_disconnected()
 
     async def handle_new_message(self, event):
+
+        # Get user details
+        sender = await event.get_sender()
+        self.user_id = sender.id
+        username = sender.username or sender.first_name
+        print(f"User ID: {self.user_id}, Username: @{username}")
+
         try:
             # Ignore service messages and bot commands
             if not event.message.message and not event.message.media:
                 return
 
             # Handle media albums
-            if event.message.grouped_id:
-                await self.process_album(event)
-            # Handle single messages
-            else:
-                await self.process_single_message(event)
+            if self.user_id != self.admin_id:
+                if event.message.grouped_id:
+                    await self.process_album(event)
+                # Handle single messages
+                else:
+                    await self.process_single_message(event)
 
         except Exception as e:
             print(f"Error processing message: {e}")
+
 
     async def process_single_message(self, event):
         """Process non-album messages"""
@@ -59,7 +70,7 @@ class TelegramPostManager:
         album_messages.append(event.message)
 
         # Wait 1 second to collect all album parts
-        await asyncio.sleep(1)
+        await asyncio.sleep(2)
         if album_id not in self.pending_albums:
             return
 
@@ -123,7 +134,8 @@ if __name__ == "__main__":
         api_hash=API_HASH,
         bot_token=BOT_TOKEN,
         source_group=SOURCE_GROUP_ID,
-        backup_group=BACKUP_GROUP_ID
+        backup_group=BACKUP_GROUP_ID,
+        admin_id=ADMIN_SENDER_ID
     )
 
     asyncio.run(manager.start())
