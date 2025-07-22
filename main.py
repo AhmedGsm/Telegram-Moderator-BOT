@@ -50,11 +50,11 @@ class TelegramPostManager:
     async def process_single_message(self, event):
         """Process non-album messages"""
         # Copy to backup group
-        await self.client.send_message(
-            self.backup_group,
-            event.message.message,
-            file=event.message.media,
-            link_preview=False
+
+        await self.client.forward_messages(
+            entity=self.backup_group,
+            messages=event.message.id,
+            from_peer=self.source_group
         )
 
         # Delete from source group
@@ -80,7 +80,11 @@ class TelegramPostManager:
         messages.sort(key=lambda msg: msg.id)
 
         # Forward album to backup
-        await self.forward_album(messages)
+        await self.client.forward_messages(
+            entity=self.backup_group,
+            messages=[msg.id for msg in messages],
+            from_peer=self.source_group
+        )
 
         # Delete all album parts
         await self.client.delete_messages(self.source_group, [msg.id for msg in messages])
