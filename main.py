@@ -23,6 +23,9 @@ class TelegramPostManager:
         await self.client.run_until_disconnected()
 
     async def handle_new_message(self, event):
+        # Ignore messages from Haris_BOT to prevent infinite loop
+        if event.message.from_id.user_id == 8162000565:
+            return
 
         # Get user details
         sender = await event.get_sender()
@@ -116,7 +119,7 @@ class TelegramPostManager:
         username = sender.username or sender.first_name
         await self.client.send_message(
             self.source_group,
-            f"@{username}, your post is hidden for verification",
+            f"@{username}, سيتم التحقق من المنشور يرجى الانتظار، شكرا",
             reply_to=event.message.reply_to_msg_id
         )
 
