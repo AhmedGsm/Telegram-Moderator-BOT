@@ -41,16 +41,6 @@ class TelegramPostManager:
             if not event.message.message and not event.message.media:
                 return
 
-            # If a user is posted image or album plus text enable posting,
-            # Else disable posting
-            self.full_post = False
-            if self.pending_albums or event.message.media:
-                if event.message.message:
-                    self.notification_message = NOTIFICATION_HIDE_FOR_MODERATION
-                    self.full_post = True
-            else:
-                self.full_post = False
-                self.notification_message = NOTIFICATION_IMAGE_TEXT
 
             # Handle media albums
             if self.user_id != self.admin_id:
@@ -64,10 +54,20 @@ class TelegramPostManager:
         except Exception as e:
             print(f"Error processing message: {e}")
 
+    async def check_if_full_post(self, event):
+        self.full_post = False
+        self.notification_message = NOTIFICATION_IMAGE_TEXT
+        if event.message.message and event.message.media:
+            self.notification_message = NOTIFICATION_HIDE_FOR_MODERATION
+            self.full_post = True
 
     async def process_single_message(self, event):
         """Process non-album messages"""
         # Copy to backup group
+
+        # If a user is posted image or album plus text enable posting,
+        # Else disable posting
+        await self.check_if_full_post(event)
 
         if self.full_post:
             await self.client.forward_messages(
@@ -97,6 +97,10 @@ class TelegramPostManager:
 
         # Sort by ID to maintain original order
         messages.sort(key=lambda msg: msg.id)
+
+        # If a user is posted image or album plus text enable posting,
+        # Else disable posting
+        await self.check_if_full_post(event)
 
         # Forward album to backup
         if self.full_post:
